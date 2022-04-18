@@ -16,7 +16,7 @@ async def main():
         # 声明队列信息，避免队列不存在
 
         await channel.default_exchange.publish(
-            aio_pika.Message(body="1001 {}".format(routing_key).encode()),
+            aio_pika.Message(body="add:1002".encode()),
             routing_key=routing_key,
         )
         # 向指定队列发布消息

@@ -26,11 +26,20 @@ async def start_aio_pika():
                 async with message.process():
                     print(message.body)
                     message_contents = message.body.decode()
-                    taskID = message_contents.split(' ',1)
-                    print(int(taskID[0]))
-                    # 获取消息
-                    url = "http://127.0.0.1:8000/add/" + taskID[0]
-                    http_get(url)
+                    msg_content = message_contents.split(' ', 1)
+
+                    msg_split = message_contents.split(':', 1)
+                    msg_type = msg_split[0]
+                    msg_param = msg_split[1]
+                    print(" msg_type: ", msg_type)
+                    print(" msg_param: ",  msg_param)
+                    send_url = ""
+                    if msg_type == "add":
+                        send_url = "http://127.0.0.1:8000/add/" + msg_param
+                    elif msg_type == "setstatus":
+                        send_url = "http://127.0.0.1:8000/setstatus/" + msg_param
+
+                    http_get(send_url)
 
 if __name__ == "__main__":
     asyncio.run(start_aio_pika())
