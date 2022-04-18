@@ -22,7 +22,7 @@ class Task_manager:
         if task_id in self.task_list1:
             pass
         task = task_info()
-        task.task_id=task_id
+        task.task_id = task_id
         self.task_list1[task_id] = task
         #print("add task:",task_id,self)
         for kv in self.task_list1.items():
@@ -67,7 +67,7 @@ class Task_manager:
         for task_id in remove_list:
                 del self.task_list1[task_id]
 
-        #print("----", len(self.task_list1))
+        print("----", len(self.task_list1))
 
         timer = Timer(1.0, self.update)
         timer.start()
