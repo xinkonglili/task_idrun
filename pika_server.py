@@ -1,11 +1,33 @@
 import asyncio
+import time
+
 import aio_pika
-
 import urllib.request
+from threading import Thread
+from requests import get, post
 
-def http_get(url):
+
+request_methods = {
+    'get': get,
+    'post': post,
+}
+
+def sync_http_get(url):
     response = urllib.request.urlopen(url)
-    res_Content = response.read()
+    res_content = response.read()
+    print("响应内容---->：", res_content)
+
+def async_http_get(method, *args, callback=None, timeout=15, **kwargs):
+    method = request_methods[method.lower()]
+    '''
+    if callback:
+        def callback_with_args(response, *args, **kwargs):
+            callback(response)
+        kwargs['hooks'] = {'response': callback_with_args} '''
+
+    kwargs['timeout'] = timeout
+    thread = Thread(target=method, args=args, kwargs=kwargs)
+    thread.start()
 
 # 建立连接
 async def start_aio_pika():
@@ -39,7 +61,17 @@ async def start_aio_pika():
                     elif msg_type == "setstatus":
                         send_url = "http://127.0.0.1:8000/setstatus/" + msg_param
 
-                    http_get(send_url)
+                    #send_url = "http://httpbin.org/delay/10"
+                    begin_sync_time = time.time()
+                    sync_http_get(send_url)
+                    finish_sync_time = time.time()
+                    #耗时：10.492367029190063
+                    print("sync_http_get:", finish_sync_time-begin_sync_time)
+                    begin_async_time = time.time()
+                    async_http_get('get', send_url, callback=lambda r: print(r.json()))
+                    finish_async_time = time.time()
+                    #耗时：0.0009777545928955078
+                    print("async_http_get:", finish_async_time - begin_async_time)
 
 if __name__ == "__main__":
     asyncio.run(start_aio_pika())
