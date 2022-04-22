@@ -1,6 +1,5 @@
 import asyncio
-import time
-
+import redis
 import aio_pika
 import urllib.request
 from threading import Thread
@@ -29,6 +28,32 @@ def async_http_get(method, *args, callback=None, timeout=15, **kwargs):
     thread = Thread(target=method, args=args, kwargs=kwargs)
     thread.start()
 
+def use_http_send(msg_type, msg_param):
+    if msg_type == "add":
+        send_url = "http://127.0.0.1:8000/add/" + msg_param
+    elif msg_type == "setstatus":
+        send_url = "http://127.0.0.1:8000/setstatus/" + msg_param
+    sync_http_get(send_url)
+
+    ''' 耗时：10.492367029190063
+    print("sync_http_get:", finish_sync_time - begin_sync_time)
+    begin_async_time = time.time()
+    finish_async_time = time.time()
+    # 耗时：0.0009777545928955078
+    print("async_http_get:", finish_async_time - begin_async_time) '''
+
+def use_redis_send(msg_type, msg_param):
+    # 实现一个连接池
+    pool = redis.ConnectionPool(host='127.0.0.1')
+    r = redis.Redis(connection_pool=pool)
+    r.set(msg_type, msg_param)
+    if r.get(msg_type).decode() != "None":
+        send_url = ""
+        if msg_type == "add":
+            send_url = "http://127.0.0.1:8000/add/" + r.get(msg_param)
+        elif msg_type == "setstatus":
+            send_url = "http://127.0.0.1:8000/setstatus/" + r.get(msg_param)
+        async_http_get('get', send_url, callback=lambda r: print(r.json()))
 # 建立连接
 async def start_aio_pika():
     connection = await aio_pika.connect_robust(
@@ -49,29 +74,12 @@ async def start_aio_pika():
                     print(message.body)
                     message_contents = message.body.decode()
                     msg_content = message_contents.split(' ', 1)
-
                     msg_split = message_contents.split(':', 1)
                     msg_type = msg_split[0]
                     msg_param = msg_split[1]
                     print(" msg_type: ", msg_type)
                     print(" msg_param: ",  msg_param)
-                    send_url = ""
-                    if msg_type == "add":
-                        send_url = "http://127.0.0.1:8000/add/" + msg_param
-                    elif msg_type == "setstatus":
-                        send_url = "http://127.0.0.1:8000/setstatus/" + msg_param
-
-                    #send_url = "http://httpbin.org/delay/10"
-                    begin_sync_time = time.time()
-                    sync_http_get(send_url)
-                    finish_sync_time = time.time()
-                    #耗时：10.492367029190063
-                    print("sync_http_get:", finish_sync_time-begin_sync_time)
-                    begin_async_time = time.time()
-                    async_http_get('get', send_url, callback=lambda r: print(r.json()))
-                    finish_async_time = time.time()
-                    #耗时：0.0009777545928955078
-                    print("async_http_get:", finish_async_time - begin_async_time)
-
+                    use_http_send(msg_type, msg_param)
+                    use_redis_send(msg_type, msg_param)
 if __name__ == "__main__":
     asyncio.run(start_aio_pika())
