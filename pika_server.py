@@ -46,14 +46,21 @@ def use_redis_send(msg_type, msg_param):
     # 实现一个连接池
     pool = redis.ConnectionPool(host='127.0.0.1')
     r = redis.Redis(connection_pool=pool)
-    r.set(msg_type, msg_param)
-    if r.get(msg_type).decode() != "None":
-        send_url = ""
-        if msg_type == "add":
-            send_url = "http://127.0.0.1:8000/add/" + r.get(msg_param)
-        elif msg_type == "setstatus":
-            send_url = "http://127.0.0.1:8000/setstatus/" + r.get(msg_param)
-        async_http_get('get', send_url, callback=lambda r: print(r.json()))
+    if msg_type == "add":
+        keyname = "pika_redis_add_key"
+        pika_redis_value = r.get(keyname)
+        if pika_redis_value != 'None':
+            pika_redis_value = pika_redis_value + ";" + msg_param
+        else:
+            pika_redis_value = msg_param
+        r.set(keyname, pika_redis_value)
+
+    elif msg_type == "setstatus":
+        msg_split = msg_param.split("=", 1)
+        taskid_key = msg_split[0]
+        taskid_value = msg_split[1]
+        r.set(taskid_key, int(taskid_value))
+
 # 建立连接
 async def start_aio_pika():
     connection = await aio_pika.connect_robust(
@@ -72,9 +79,7 @@ async def start_aio_pika():
             async for message in queue_iter:
                 async with message.process():
                     print(message.body)
-                    message_contents = message.body.decode()
-                    msg_content = message_contents.split(' ', 1)
-                    msg_split = message_contents.split(':', 1)
+                    msg_split = message.body.decode().split(':', 1)
                     msg_type = msg_split[0]
                     msg_param = msg_split[1]
                     print(" msg_type: ", msg_type)

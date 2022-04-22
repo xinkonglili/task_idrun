@@ -2,7 +2,6 @@
 from fastapi import FastAPI
 import uvicorn
 import task_process
-#from main_fastapi import task_manager
 
 app = FastAPI()
 
@@ -12,6 +11,7 @@ print("start fast api task_manager pointer:", task_manager)
 @app.get("/")
 async def root():
     print("11 fast api task_manager pointer:", task_manager)
+    task_manager.start()
     return {"message": "Hello World"}
 
 @app.get("/add/{task_id}/")
