@@ -16,7 +16,7 @@ pika_redis_value = r.get(keyname).decode()
 msg_split = str(pika_redis_value).split(";", -1)
 print("msg_split:", msg_split)
 
-r.set('1001', 2)
+r.set('1001', 1)
 
 
 

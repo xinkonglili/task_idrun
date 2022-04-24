@@ -1,12 +1,17 @@
 import time
 from threading import Timer
 import redis
+import requests
+import json
 
+#report url
+dingding_report_url = "https://oapi.dingtalk.com/robot/send?access_token=" \
+                                 "8bd600ae38ececa20cdde5e6d9768e13fcd58e17a5fa1eb5b5cc899f4dd596e7"
 class task_info:
     def __init__(self):
         self.task_id = 0
         self.task_time = time.time()
-        self.task_timeout = 60 #30s
+        self.task_timeout = 30 #30s
         self.status = 0  #0执行中，1执行完成，2检测超时
 
 class Taskmanager:
@@ -46,8 +51,30 @@ class Taskmanager:
         else:
             print("set_task_status not find taskid,", task_id, task_status)
 
-    def send_report(self, reason):
-       print("send_report:", reason)
+    # 报警
+    def send_report(self, taskid, status, reason):
+        #timeout
+        if status == 2 :
+            self.send_task_timeout(taskid, reason)
+
+    def send_task_timeout(self, taskid, reason):
+        data_title = "ASR-超时报警"
+        data_content = "### ASR任务监控-超时报警\n\n"
+        data_content = data_content + "> **Task_ID:** " + str(taskid) + "\n\n"
+        data_content = data_content + "> **Name:** compute_04\n\n" #todo
+        data_content = data_content + "> **Reason:** " + reason
+
+        data_dict = {
+            "msgtype": "markdown",
+            "markdown": {
+                "title": data_title,
+                "text": data_content
+            }
+        }
+
+        headers = {'Content-Type': 'application/json'}
+        response = requests.post(dingding_report_url, data=json.dumps(data_dict), headers=headers)
+        print(response.text)  # {"errcode":0,"errmsg":"ok"}
 
     def update(self):
         self.index += 1
@@ -63,10 +90,14 @@ class Taskmanager:
         for task_id, task in self.task_list1.items():
             if task.status == 1:
                 remove_list.append(task_id)
-                self.send_report("time finish,task_id: " + str(task.task_id) + ",start_time:" + str(task.task_time))
+                print("time finish,task_id: " + str(task.task_id) + ",start_time:" + str(task.task_time) + " ,end_time:" +
+                      str(current_time))
             elif task.status == 2:
                 remove_list.append(task_id)
-                self.send_report("time out!,task_id: " + str(task.task_id) + ",start_time:" + str(task.task_time))
+                print("time out!,task_id: " + str(task.task_id) + ",start_time:" + str(task.task_time) + " ,end_time:" +
+                      str(current_time))
+                reason = "Timeout Duration: " + str(task.task_timeout) + "s"
+                self.send_report(task_id, task.status, reason)
 
         for task_id in remove_list:
             del self.task_list1[task_id]

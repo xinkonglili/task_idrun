@@ -49,6 +49,7 @@ def use_redis_send(msg_type, msg_param):
     if msg_type == "add":
         keyname = "pika_redis_add_key"
         pika_redis_value = r.get(keyname)
+        #rpushx
         if pika_redis_value != 'None':
             pika_redis_value = pika_redis_value + ";" + msg_param
         else:
