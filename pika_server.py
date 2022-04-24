@@ -2,18 +2,18 @@ import asyncio
 import redis
 import aio_pika
 import urllib.request
+import config
 from threading import Thread
 from requests import get, post
-
 
 request_methods = {
     'get': get,
     'post': post,
 }
 
-Redis_taskAdd_keyname = "pika_redis_add_key"
-Fastapi_taskAdd_url = "http://127.0.0.1:8000/add/"
-Fastapi_taskStatus_url = "http://127.0.0.1:8000/setstatus/"
+Redis_taskAdd_keyname = config.Redis_taskAdd_keyname
+Fastapi_taskAdd_url = config.Fastapi_taskAdd_url
+Fastapi_taskStatus_url = config.Fastapi_taskStatus_url
 
 def sync_http_get(url):
     response = urllib.request.urlopen(url)
@@ -39,17 +39,7 @@ def use_http_send(msg_type, msg_param):
         send_url = Fastapi_taskStatus_url + msg_param
     sync_http_get(send_url)
 
-    ''' 耗时：10.492367029190063
-    print("sync_http_get:", finish_sync_time - begin_sync_time)
-    begin_async_time = time.time()
-    finish_async_time = time.time()
-    # 耗时：0.0009777545928955078
-    print("async_http_get:", finish_async_time - begin_async_time) '''
-
-def use_redis_send(msg_type, msg_param):
-    # 实现一个连接池
-    pool = redis.ConnectionPool(host='127.0.0.1')
-    r = redis.Redis(connection_pool=pool)
+def use_redis_send(r, msg_type, msg_param):
     if msg_type == "add":
         r.rpush(Redis_taskAdd_keyname, msg_param)
     elif msg_type == "setstatus":
@@ -60,6 +50,11 @@ def use_redis_send(msg_type, msg_param):
 
 # 建立连接
 async def start_aio_pika():
+    redis_con = None
+    if config.Enable_Redis:
+        pool = redis.ConnectionPool(host='127.0.0.1')
+        redis_con = redis.Redis(connection_pool=pool)
+
     connection = await aio_pika.connect_robust(
         "amqp://guest:guest@127.0.0.1/"
     )
@@ -79,9 +74,12 @@ async def start_aio_pika():
                     msg_split = message.body.decode().split(':', 1)
                     msg_type = msg_split[0]
                     msg_param = msg_split[1]
-                    print(" msg_type: ", msg_type)
-                    print(" msg_param: ",  msg_param)
+                    print(" msg_type: ", msg_type, ",msg_param: ", msg_param)
+
                     use_http_send(msg_type, msg_param)
-                    use_redis_send(msg_type, msg_param)
+
+                    if config.Enable_Redis:
+                        use_redis_send(redis_con, msg_type, msg_param)
+
 if __name__ == "__main__":
     asyncio.run(start_aio_pika())
