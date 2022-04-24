@@ -11,6 +11,10 @@ request_methods = {
     'post': post,
 }
 
+Redis_taskAdd_keyname = "pika_redis_add_key"
+Fastapi_taskAdd_url = "http://127.0.0.1:8000/add/"
+Fastapi_taskStatus_url = "http://127.0.0.1:8000/setstatus/"
+
 def sync_http_get(url):
     response = urllib.request.urlopen(url)
     res_content = response.read()
@@ -30,9 +34,9 @@ def async_http_get(method, *args, callback=None, timeout=15, **kwargs):
 
 def use_http_send(msg_type, msg_param):
     if msg_type == "add":
-        send_url = "http://127.0.0.1:8000/add/" + msg_param
+        send_url = Fastapi_taskAdd_url + msg_param
     elif msg_type == "setstatus":
-        send_url = "http://127.0.0.1:8000/setstatus/" + msg_param
+        send_url = Fastapi_taskStatus_url + msg_param
     sync_http_get(send_url)
 
     ''' 耗时：10.492367029190063
@@ -47,15 +51,7 @@ def use_redis_send(msg_type, msg_param):
     pool = redis.ConnectionPool(host='127.0.0.1')
     r = redis.Redis(connection_pool=pool)
     if msg_type == "add":
-        keyname = "pika_redis_add_key"
-        pika_redis_value = r.get(keyname)
-        #rpushx
-        if pika_redis_value != 'None':
-            pika_redis_value = pika_redis_value + ";" + msg_param
-        else:
-            pika_redis_value = msg_param
-        r.set(keyname, pika_redis_value)
-
+        r.rpush(Redis_taskAdd_keyname, msg_param)
     elif msg_type == "setstatus":
         msg_split = msg_param.split("=", 1)
         taskid_key = msg_split[0]

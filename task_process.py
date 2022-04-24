@@ -4,6 +4,7 @@ import redis
 import requests
 import json
 
+Redis_taskAdd_keyname = "pika_redis_add_key"
 #report url
 dingding_report_url = "https://oapi.dingtalk.com/robot/send?access_token=" \
                                  "8bd600ae38ececa20cdde5e6d9768e13fcd58e17a5fa1eb5b5cc899f4dd596e7"
@@ -105,17 +106,14 @@ class Taskmanager:
         timer.start()
 
     def search_redis(self):
-        if self.redis_con == None:
+        if self.redis_con == "None":
             pass
         #查到新增的task
-        keyname = "pika_redis_add_key"
-        pika_redis_value = self.redis_con.get(keyname)
-        #print("pika_redis_value:",pika_redis_value)
-        if len(pika_redis_value.decode()) > 0:
-            msg_split = pika_redis_value.decode().split(";", -1)
-            for i in range(len(msg_split)):
-                self.add_Task(int(msg_split[i]))
-            self.redis_con.set(keyname, "")
+        pika_redis_value = self.redis_con.lrange(Redis_taskAdd_keyname, 0, -1)
+        if len(pika_redis_value) > 0:
+            for index in range(len(pika_redis_value)):
+                self.add_Task(int(pika_redis_value[index].decode()))
+            self.redis_con.delete(Redis_taskAdd_keyname)
         #查找状态　
         for task_id, task in self.task_list1.items():
             if self.redis_con.exists(str(task_id)):

@@ -4,21 +4,22 @@ pool = redis.ConnectionPool(host='127.0.0.1')
 
 r = redis.Redis(connection_pool=pool)
 r.set('foo', 'bar')
-if r.get('foo') != None:
+if r.get('foo') != "None":
     print(r.get('foo').decode())
 r.delete('foo')
 print(r.get('foo'))
 
 keyname = "pika_redis_add_key"
-r.set(keyname, str('1001;1002'))
+r.delete(keyname)
+r.rpush(keyname, 1003, 1004)
+print(r.lrange(keyname,0,-1))
 
-pika_redis_value = r.get(keyname).decode()
-msg_split = str(pika_redis_value).split(";", -1)
-print("msg_split:", msg_split)
+key_vals = r.lrange(keyname, 0, -1)
+for index in range(len(key_vals)):
+    print(key_vals[index].decode())
 
-r.set('1001', 1)
+#r.rpush(keyname, str('1001;1002'))
 
-
-
+#r.set('1001', 1)
 if __name__ =="__main__":
     pass
