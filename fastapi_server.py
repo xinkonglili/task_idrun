@@ -29,6 +29,6 @@ async def item_id(task_id: str):
     return {'task_id': task_id, "task_status": 1}
 
 if __name__ == '__main__':
-    # start fastapi
+    #start fastapi
     uvicorn.run("fastapi_server:app", port=8000, reload=True)
 
